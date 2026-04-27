@@ -408,31 +408,37 @@
         }
     }
     
-    // ============ DOWNLOAD ROM ============
-    async function downloadRom(fileId) {
-        try {
-            const directUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
-            const resp = await fetch(directUrl);
-            if (resp.ok) {
-                const blob = await resp.blob();
-                if (blob.size > 1000) return blob;
+  async function downloadRom(fileId) {
+    // Method 1: Try direct API download with API key
+    const apiUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${API_KEY}`;
+    
+    try {
+        const response = await fetch(apiUrl);
+        if (response.ok) {
+            const blob = await response.blob();
+            if (blob.size > 1000) {
+                return blob;
             }
-        } catch (e) {}
-        
-        const proxyUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-        let blob = null;
-        for (const proxy of CORS_PROXIES) {
-            try {
-                const resp = await fetch(proxy + encodeURIComponent(proxyUrl));
-                if (resp.ok) {
-                    blob = await resp.blob();
-                    if (blob.size > 1000) break;
-                }
-            } catch (e) {}
         }
-        if (!blob || blob.size < 1000) throw new Error('Download failed');
-        return blob;
+    } catch (e) {
+        console.log('API download failed:', e);
     }
+    
+    // Method 2: Try the download URL with a no-cors mode
+    try {
+        const directUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
+        const response = await fetch(directUrl, { mode: 'no-cors' });
+        // Note: no-cors mode gives an opaque response, but it might still work
+        const blob = await response.blob();
+        if (blob.size > 1000) {
+            return blob;
+        }
+    } catch (e) {
+        console.log('Direct download failed:', e);
+    }
+    
+    throw new Error('Download failed - try using a different browser or check the file permissions');
+}
     
     // ============ LOAD AND PLAY ROM ============
     async function loadRom(fileId, name) {
